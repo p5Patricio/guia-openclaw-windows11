@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenClaw en Windows 11 — Guía Nativa (PowerShell)</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #21262d; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950;
+    --yellow: #d29922; --red: #f85149; --purple: #bc8cff; --orange: #ffa657;
+    --win: #0078d4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 15px; line-height: 1.7; }
+
+  .cover {
+    background: linear-gradient(135deg, #0d1117 0%, #001529 50%, #002952 100%);
+    border-bottom: 1px solid var(--border); padding: 60px 40px; text-align: center; position: relative;
+  }
+  .cover::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 60% 40%, rgba(0,120,212,0.1) 0%, transparent 60%);
+  }
+  .cover-emoji { font-size: 64px; display: block; margin-bottom: 20px; }
+  .cover h1 { font-size: 2.2em; font-weight: 700; margin-bottom: 10px; }
+  .cover h1 span { color: var(--win); }
+  .cover .subtitle { color: var(--muted); margin-bottom: 28px; }
+  .cover .badges { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 0.82em; font-weight: 600; }
+  .badge.win { border-color: var(--win); color: var(--win); }
+  .badge.green { border-color: var(--green); color: var(--green); }
+  .badge.orange { border-color: var(--orange); color: var(--orange); }
+
+  .warn-banner {
+    background: rgba(210,153,34,0.1); border: 1px solid var(--yellow);
+    border-radius: 8px; padding: 16px 20px; margin: 30px auto; max-width: 860px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .warn-banner .icon { font-size: 1.4em; flex-shrink: 0; }
+  .warn-banner strong { color: var(--yellow); }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 30px; margin: 20px auto 40px; max-width: 860px; }
+  .toc h2 { color: var(--win); font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { padding: 4px 0; }
+  .toc a { color: var(--text); text-decoration: none; }
+  .toc a:hover { color: var(--win); }
+
+  .container { max-width: 860px; margin: 0 auto; padding: 0 30px 80px; }
+
+  .phase { margin-top: 56px; }
+  .phase-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; padding-bottom: 14px; border-bottom: 2px solid var(--win); }
+  .phase-number { background: var(--win); color: #fff; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1em; flex-shrink: 0; }
+  .phase-title { font-size: 1.4em; font-weight: 700; }
+  .phase-subtitle { color: var(--muted); font-size: 0.88em; margin-top: 2px; }
+
+  h3 { color: var(--win); font-size: 1em; margin: 24px 0 10px; display: flex; align-items: center; gap: 8px; }
+
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin: 14px 0; }
+  .step-label { font-size: 0.72em; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+
+  pre { background: #010409; border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; margin: 10px 0; overflow-x: auto; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 0.87em; line-height: 1.65; }
+  code { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 0.87em; color: var(--orange); }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+
+  .ps { color: #4ec9b0; } /* PowerShell cmdlets */
+  .psflag { color: #569cd6; } /* Parameters */
+  .psstr { color: #ce9178; } /* Strings */
+  .pscmt { color: #6a9955; font-style: italic; } /* Comments */
+  .psvar { color: #9cdcfe; } /* Variables */
+  .pspath { color: #dcdcaa; } /* Paths */
+
+  .alert { border-radius: 8px; padding: 14px 18px; margin: 14px 0; border-left: 4px solid; display: flex; gap: 12px; }
+  .alert-icon { font-size: 1.1em; flex-shrink: 0; }
+  .alert-title { font-weight: 700; margin-bottom: 3px; }
+  .alert p { font-size: 0.92em; margin: 3px 0; }
+  .alert.danger { background: rgba(248,81,73,0.08); border-color: var(--red); }
+  .alert.danger .alert-title { color: var(--red); }
+  .alert.warning { background: rgba(210,153,34,0.08); border-color: var(--yellow); }
+  .alert.warning .alert-title { color: var(--yellow); }
+  .alert.info { background: rgba(88,166,255,0.08); border-color: var(--accent); }
+  .alert.info .alert-title { color: var(--accent); }
+  .alert.success { background: rgba(63,185,80,0.08); border-color: var(--green); }
+  .alert.success .alert-title { color: var(--green); }
+  .alert.win { background: rgba(0,120,212,0.08); border-color: var(--win); }
+  .alert.win .alert-title { color: var(--win); }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.9em; }
+  th { background: var(--surface2); color: var(--muted); text-align: left; padding: 9px 13px; font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+
+  .chip { display: inline-block; border-radius: 4px; padding: 2px 7px; font-size: 0.78em; font-weight: 600; }
+  .chip.green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .chip.red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .chip.yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
+  .chip.blue { background: rgba(88,166,255,0.15); color: var(--accent); }
+  .chip.win { background: rgba(0,120,212,0.15); color: var(--win); }
+
+  .config-file { background: #010409; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin: 14px 0; }
+  .config-file-header { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 8px 16px; font-size: 0.82em; color: var(--muted); font-family: monospace; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-red { background: #ff5f57; } .dot-yellow { background: #febc2e; } .dot-green { background: #28c840; }
+  .config-file pre { margin: 0; border: none; border-radius: 0; }
+
+  .key { color: #ff7b72; } .val { color: #79c0ff; } .num { color: #f8c555; }
+  .bool { color: #ff7b72; } .str2 { color: #a5d6ff; } .cmt2 { color: #8b949e; font-style: italic; }
+
+  .checklist { list-style: none; padding: 0; margin: 10px 0; }
+  .checklist li { padding: 5px 0; display: flex; align-items: flex-start; gap: 10px; }
+  .checklist li::before { content: '☐'; color: var(--muted); flex-shrink: 0; }
+  .check-green::before { content: '✅'; }
+  .check-red::before { content: '🚫'; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+  .footer { text-align: center; padding: 40px; color: var(--muted); font-size: 0.85em; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <span class="cover-emoji">🪟🦞</span>
+  <h1>OpenClaw en <span>Windows 11</span></h1>
+  <p class="subtitle">Instalación nativa con PowerShell — Sin Linux, sin WSL2</p>
+  <div class="badges">
+    <div class="badge win">⊞ Windows 11 Nativo</div>
+    <div class="badge win">PowerShell 7+</div>
+    <div class="badge green">RTX 4060 · 8GB VRAM · 32GB RAM</div>
+    <div class="badge orange">NemoClaw: solo parcial en Windows</div>
+  </div>
+</div>
+
+<div class="warn-banner">
+  <div class="icon">⚠️</div>
+  <div>
+    <strong>Limitación importante de Windows nativo:</strong> NemoClaw (el sandbox de seguridad de NVIDIA) actualmente <strong>no tiene soporte completo en Windows</strong>. Funciona solo en Linux nativo o WSL2. En esta guía usaremos Docker Desktop como capa de aislamiento alternativa, que ofrece seguridad similar pero sin el runtime OpenShell de NVIDIA. Si quieres NemoClaw completo, usa la guía WSL2.
+  </div>
+</div>
+
+<div class="toc">
+  <h2>📋 Contenido</h2>
+  <ol>
+    <li><a href="#prereq">Verificar requisitos de Windows 11</a></li>
+    <li><a href="#ps7">Instalar PowerShell 7</a></li>
+    <li><a href="#winget">Instalar herramientas con winget</a></li>
+    <li><a href="#node">Instalar Node.js 24</a></li>
+    <li><a href="#docker">Instalar Docker Desktop</a></li>
+    <li><a href="#ollama">Instalar Ollama con soporte GPU</a></li>
+    <li><a href="#openclaw">Instalar y configurar OpenClaw</a></li>
+    <li><a href="#models">Descargar modelos locales</a></li>
+    <li><a href="#gemini">Configurar Gemini API key (gratis)</a></li>
+    <li><a href="#config">openclaw.json completo para Windows</a></li>
+    <li><a href="#security">Hardening de seguridad en Windows</a></li>
+    <li><a href="#skills">Instalar skills recomendadas</a></li>
+    <li><a href="#verify">Verificación final</a></li>
+    <li><a href="#trouble">Troubleshooting Windows</a></li>
+  </ol>
+</div>
+
+<div class="container">
+
+<!-- FASE 0 -->
+<div class="phase" id="prereq">
+  <div class="phase-header">
+    <div class="phase-number">0</div>
+    <div>
+      <div class="phase-title">Verificar requisitos de Windows 11</div>
+      <div class="phase-subtitle">Antes de instalar cualquier cosa</div>
+    </div>
+  </div>
+
+  <h3>Verificar versión de Windows</h3>
+  <div class="step">
+    <div class="step-label">PowerShell (busca "PowerShell" en el menú Inicio)</div>
+    <pre><span class="pscmt"># Verificar versión de Windows (debe ser 21H2 o posterior)</span>
+<span class="ps">winver</span>
+
+<span class="pscmt"># O via PowerShell</span>
+<span class="ps">Get-WinVersion</span></pre>
+  </div>
+
+  <h3>Verificar que los drivers NVIDIA estén instalados</h3>
+  <div class="step">
+    <pre><span class="pscmt"># Verificar GPU y drivers NVIDIA</span>
+<span class="ps">nvidia-smi</span>
+
+<span class="pscmt"># Si nvidia-smi no existe, descargar drivers desde:</span>
+<span class="pscmt"># https://www.nvidia.com/Download/index.aspx</span>
+<span class="pscmt"># Buscar: RTX 4060 → Windows 11 → Game Ready Driver</span></pre>
+  </div>
+
+  <div class="alert win">
+    <div class="alert-icon">ℹ️</div>
+    <div>
+      <div class="alert-title">Habilitar virtualización (requerida para Docker)</div>
+      <p>Abre el <strong>Administrador de tareas → Rendimiento → CPU</strong> y verifica que dice "Virtualización: Habilitada". Si no, debes habilitarla en la BIOS/UEFI (busca "SVM Mode" o "Intel VT-x").</p>
+    </div>
+  </div>
+</div>
+
+<!-- FASE 1 -->
+<div class="phase" id="ps7">
+  <div class="phase-header">
+    <div class="phase-number">1</div>
+    <div>
+      <div class="phase-title">Instalar PowerShell 7</div>
+      <div class="phase-subtitle">La versión moderna de PowerShell (no la que viene por defecto en Windows)</div>
+    </div>
+  </div>
+
+  <div class="alert info">
+    <div class="alert-icon">ℹ️</div>
+    <div>
+      <div class="alert-title">¿Por qué PowerShell 7 y no el default?</div>
+      <p>Windows incluye PowerShell 5.1 por defecto, que es antigua. PowerShell 7 (basada en .NET 8) es más rápida, tiene mejor soporte para JSON y comandos modernos que OpenClaw usa.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-label">En PowerShell 5.1 (la que ya tienes, ejecutar como Administrador)</div>
+    <pre><span class="pscmt"># Instalar PowerShell 7 via winget</span>
+<span class="ps">winget install</span> <span class="psflag">--id</span> Microsoft.PowerShell <span class="psflag">--source</span> winget
+
+<span class="pscmt"># Después de instalar, abrir PowerShell 7 (aparece como "PowerShell 7" en el menú inicio)</span>
+<span class="pscmt"># Verificar versión</span>
+<span class="psvar">$PSVersionTable</span>.PSVersion</pre>
+  </div>
+
+  <div class="alert warning">
+    <div class="alert-icon">⚠️</div>
+    <div>
+      <div class="alert-title">Todos los comandos siguientes son para PowerShell 7</div>
+      <p>Abre <strong>PowerShell 7</strong> (no Windows PowerShell 5.1) para todos los pasos siguientes. Puedes buscarlo en el menú inicio o fijarlo en la barra de tareas.</p>
+    </div>
+  </div>
+</div>
+
+<!-- FASE 2 -->
+<div class="phase" id="winget">
+  <div class="phase-header">
+    <div class="phase-number">2</div>
+    <div>
+      <div class="phase-title">Instalar herramientas con winget</div>
+      <div class="phase-subtitle">El gestor de paquetes oficial de Windows</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-label">PowerShell 7 — Ejecutar como Administrador</div>
+    <pre><span class="pscmt"># Actualizar winget a la última versión</span>
+<span class="ps">winget upgrade</span> <span class="psflag">--all</span>
+
+<span class="pscmt"># Instalar Git (necesario para npm y skills)</span>
+<span class="ps">winget install</span> <span class="psflag">--id</span> Git.Git <span class="psflag">-e</span> <span class="psflag">--source</span> winget
+
+<span class="pscmt"># Instalar Windows Terminal (mejor experiencia de terminal)</span>
+<span class="ps">winget install</span> <span class="psflag">--id</span> Microsoft.WindowsTerminal <span class="psflag">-e</span></pre>
+  </div>
+</div>
+
+<!-- FASE 3 -->
+<div class="phase" id="node">
+  <div class="phase-header">
+    <div class="phase-number">3</div>
+    <div>
+      <div class="phase-title">Instalar Node.js 24</div>
+      <div class="phase-subtitle">Runtime requerido por OpenClaw</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-label">Opción A — winget (recomendada)</div>
+    <pre><span class="pscmt"># Instalar Node.js 24 LTS</span>
+<span class="ps">winget install</span> <span class="psflag">--id</span> OpenJS.NodeJS.LTS <span class="psflag">-e</span>
+
+<span class="pscmt"># Cerrar y reabrir PowerShell 7, luego verificar</span>
+<span class="ps">node</span> <span class="psflag">--version</span>   <span class="pscmt"># Debe mostrar v24.x.x</span>
+<span class="ps">npm</span> <span class="psflag">--version</span>    <span class="pscmt"># Debe mostrar 10.x.x</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-label">Opción B — Instalador gráfico</div>
+    <p style="margin: 8px 0; color: var(--muted);">Ve a <strong>nodejs.org</strong> → descarga el instalador <code>.msi</code> de Node.js 24 LTS → ejecuta y sigue el asistente.</p>
+  </div>
+
+  <div class="alert warning">
+    <div class="alert-icon">⚠️</div>
+    <div>
+      <div class="alert-title">Política de ejecución de scripts</div>
+      <p>Si npm da error de "scripts deshabilitados", ejecuta esto en PowerShell 7 como Administrador:</p>
+      <pre style="margin: 8px 0;"><span class="ps">Set-ExecutionPolicy</span> <span class="psflag">-ExecutionPolicy</span> RemoteSigned <span class="psflag">-Scope</span> CurrentUser</pre>
+    </div>
+  </div>
+</div>
+
+<!-- FASE 4 -->
+<div class="phase" id="docker">
+  <div class="phase-header">
+    <div class="phase-number">4</div>
+    <div>
+      <div class="phase-title">Instalar Docker Desktop</div>
+      <div class="phase-subtitle">Reemplaza a NemoClaw en Windows — proporciona aislamiento de contenedores</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-label">PowerShell 7 como Administrador</div>
+    <pre><span class="pscmt"># Instalar Docker Desktop via winget</span>
+<span class="ps">winget install</span> <span class="psflag">--id</span> Docker.DockerDesktop <span class="psflag">-e</span></pre>
+  </div>
+
+  <p style="margin: 12px 0;">Después de instalar, abre <strong>Docker Desktop</strong> y en Settings:</p>
+  <ul style="padding-left: 24px; margin: 8px 0;">
+    <li style="padding: 4px 0;"><strong>General</strong> → Activa "Use the WSL 2 based engine" (más rápido)</li>
+    <li style="padding: 4px 0;"><strong>Resources → Advanced</strong> → Asigna al menos 8 GB RAM al motor Docker</li>
+    <li style="padding: 4px 0;">Espera a que el ícono de Docker en la bandeja del sistema sea verde</li>
+  </ul>
+
+  <div class="step">
+    <div class="step-label">Verificar Docker funcionando</div>
+    <pre><span class="pscmt"># Verificar instalación</span>
+<span class="ps">docker</span> <span class="psflag">--version</span>
+<span class="ps">docker</span> run hello-world</pre>
+  </div>
+</div>
+
+<!-- FASE 5 -->
+<div class="phase" id="ollama">
+  <div class="phase-header">
+    <div class="phase-number">5</div>
+    <div>
+      <div class="phase-title">Instalar Ollama con soporte GPU</div>
+      <div class="phase-subtitle">Runtime para modelos locales — detecta la RTX 4060 automáticamente</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-label">Opción A — winget</div>
+    <pre><span class="pscmt"># Instalar Ollama</span>
+<span class="ps">winget install</span> <span class="psflag">--id</span> Ollama.Ollama <span class="psflag">-e</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-label">Opción B — Instalador gráfico</div>
+    <p style="margin: 8px 0; color: var(--muted);">Ve a <strong>ollama.com/download</strong> → descarga <code>OllamaSetup.exe</code> → ejecuta el instalador.</p>
+  </div>
+
+  <p style="margin: 12px 0;">Ollama en Windows corre como servicio en background automáticamente. Verás el ícono de la llama en la bandeja del sistema.</p>
+
+  <div class="step">
+    <div class="step-label">Verificar GPU activa</div>
+    <pre><span class="pscmt"># Verificar que Ollama está corriendo</span>
+<span class="ps">Invoke-RestMethod</span> <span class="psflag">-Uri</span> <span class="psstr">"http://localhost:11434/api/tags"</span>
+
+<span class="pscmt"># Verificar que usa la GPU (aparece NVIDIA en el output)</span>
+<span class="ps">nvidia-smi</span>
+
+<span class="pscmt"># Variables de entorno para VRAM (opcional pero recomendado)</span>
+<span class="pscmt"># Agregar a variables de entorno del sistema:</span>
+<span class="pscmt"># OLLAMA_GPU_OVERHEAD = 512MB  (reserva para el OS)</span>
+<span class="pscmt"># OLLAMA_MAX_VRAM = 7680MB     (deja 512MB libre de los 8GB)</span></pre>
+  </div>
+
+  <h3>Configurar variables de entorno de Ollama (permanente)</h3>
+  <div class="step">
+    <pre><span class="pscmt"># Configurar variables de entorno del sistema (como Administrador)</span>
+<span class="ps">[System.Environment]</span>::SetEnvironmentVariable(<span class="psstr">"OLLAMA_GPU_OVERHEAD"</span>, <span class="psstr">"512MB"</span>, <span class="psstr">"Machine"</span>)
+<span class="ps">[System.Environment]</span>::SetEnvironmentVariable(<span class="psstr">"OLLAMA_MAX_VRAM"</span>, <span class="psstr">"7680MB"</span>, <span class="psstr">"Machine"</span>)
+
+<span class="pscmt"># Reiniciar el servicio Ollama para aplicar</span>
+<span class="ps">Restart-Service</span> <span class="psflag">-Name</span> <span class="psstr">"ollama"</span> <span class="psflag">-ErrorAction</span> SilentlyContinue
+<span class="pscmt"># Si no hay servicio, cierra y reabre Ollama desde el menú inicio</span></pre>
+  </div>
+</div>
+
+<!-- FASE 6 -->
+<div class="phase" id="openclaw">
+  <div class="phase-header">
+    <div class="phase-number">6</div>
+    <div>
+      <div class="phase-title">Instalar y configurar OpenClaw</div>
+      <div class="phase-subtitle">Instalación global via npm</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-label">PowerShell 7</div>
+    <pre><span class="pscmt"># Instalar OpenClaw globalmente</span>
+<span class="ps">npm</span> install <span class="psflag">-g</span> openclaw@latest
+
+<span class="pscmt"># Verificar versión (debe ser 2026.1.29 o superior)</span>
+<span class="ps">openclaw</span> <span class="psflag">--version</span></pre>
+  </div>
+
+  <div class="alert danger">
+    <div class="alert-icon">🚨</div>
+    <div>
+      <div class="alert-title">CVE-2026-25253 — Versión mínima requerida: 2026.1.29</div>
+      <p>Esta versión parchó una vulnerabilidad crítica (CVSS 8.8) de ejecución remota de código. Si la versión instalada es anterior, no continúes hasta actualizarla con <code>npm update -g openclaw@latest</code>.</p>
+    </div>
+  </div>
+
+  <h3>Ejecutar el onboarding</h3>
+  <div class="step">
+    <pre><span class="pscmt"># Iniciar el asistente de configuración</span>
+<span class="ps">openclaw</span> onboard</pre>
+  </div>
+
+  <table>
+    <tr><th>Pregunta del wizard</th><th>Respuesta recomendada</th><th>Por qué</th></tr>
+    <tr><td>Choose a provider</td><td><strong>Ollama</strong></td><td>Modelos locales gratis</td></tr>
+    <tr><td>Ollama base URL</td><td><code>http://127.0.0.1:11434</code></td><td>Solo loopback</td></tr>
+    <tr><td>Cloud + Local or Local only?</td><td><strong>Cloud + Local</strong></td><td>Para Gemini como fallback</td></tr>
+    <tr><td>Install as daemon?</td><td><strong>Yes</strong></td><td>Corre en background</td></tr>
+    <tr><td>Gateway auth mode</td><td><strong>token</strong></td><td>Siempre requiere auth</td></tr>
+    <tr><td>DM policy</td><td><strong>pairing</strong></td><td>Solo tú puedes interactuar</td></tr>
+  </table>
+
+  <div class="alert info">
+    <div class="alert-icon">📁</div>
+    <div>
+      <div class="alert-title">Ubicación de archivos en Windows</div>
+      <p>En Windows, el directorio de configuración de OpenClaw es <code>C:\Users\TuUsuario\.openclaw\</code> en lugar de <code>~/.openclaw/</code> de Linux. En PowerShell puedes acceder con <code>$env:USERPROFILE\.openclaw\</code></p>
+    </div>
+  </div>
+</div>
+
+<!-- FASE 7 -->
+<div class="phase" id="models">
+  <div class="phase-header">
+    <div class="phase-number">7</div>
+    <div>
+      <div class="phase-title">Descargar modelos locales</div>
+      <div class="phase-subtitle">Optimizados para RTX 4060 8GB VRAM + 32 GB RAM</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-label">PowerShell 7</div>
+    <pre><span class="pscmt"># Modelo principal — 100% en GPU, mejor tool calling</span>
+<span class="pscmt"># VRAM: ~5.5 GB | Velocidad: ~65 tok/s | Contexto: 128K</span>
+<span class="ps">ollama</span> pull qwen3:8b-q4_K_M
+
+<span class="pscmt"># Modelo de código — fine-tuned para programación</span>
+<span class="pscmt"># VRAM: ~4.5 GB | Velocidad: ~75 tok/s | Contexto: 128K</span>
+<span class="ps">ollama</span> pull qwen2.5-coder:7b-q4_K_M
+
+<span class="pscmt"># Modelo heavy — para razonamiento complejo (offloading a RAM)</span>
+<span class="pscmt"># VRAM: ~8+2 GB | Velocidad: ~40 tok/s</span>
+<span class="ps">ollama</span> pull qwen2.5-coder:14b-q4_K_M
+
+<span class="pscmt"># Modelo rápido — para tareas simples</span>
+<span class="pscmt"># VRAM: ~2.5 GB | Velocidad: ~100+ tok/s</span>
+<span class="ps">ollama</span> pull qwen3:4b-q4_K_M
+
+<span class="pscmt"># Verificar todos los modelos descargados</span>
+<span class="ps">ollama</span> list
+
+<span class="pscmt"># Test rápido del modelo principal</span>
+<span class="ps">ollama</span> run qwen3:8b-q4_K_M <span class="psstr">"Responde solo: tool calling test OK"</span></pre>
+  </div>
+</div>
+
+<!-- FASE 8 -->
+<div class="phase" id="gemini">
+  <div class="phase-header">
+    <div class="phase-number">8</div>
+    <div>
+      <div class="phase-title">Configurar Gemini API Key (gratis)</div>
+      <div class="phase-subtitle">1,500 requests/día — $0 — Fallback para tareas complejas</div>
+    </div>
+  </div>
+
+  <h3>Obtener la API Key</h3>
+  <ol style="padding-left: 24px; margin: 10px 0;">
+    <li style="padding: 5px 0;">Ve a <strong>aistudio.google.com</strong> con tu cuenta Google</li>
+    <li style="padding: 5px 0;">Haz clic en <strong>"Get API Key"</strong> → <strong>"Create API Key"</strong></li>
+    <li style="padding: 5px 0;">Selecciona <strong>"Create API key in new project"</strong></li>
+    <li style="padding: 5px 0;">Copia la key (empieza con <code>AIza...</code>)</li>
+  </ol>
+
+  <h3>Configurar como variable de entorno del sistema (permanente)</h3>
+  <div class="step">
+    <div class="step-label">PowerShell 7 como Administrador</div>
+    <pre><span class="pscmt"># Guardar la API key como variable de entorno del sistema (permanente)</span>
+<span class="ps">[System.Environment]</span>::SetEnvironmentVariable(
+    <span class="psstr">"GEMINI_API_KEY"</span>,
+    <span class="psstr">"AIza-TU-KEY-AQUI"</span>,
+    <span class="psstr">"User"</span>  <span class="pscmt"># "User" = solo para tu usuario | "Machine" = todo el sistema</span>
+)
+
+<span class="pscmt"># Verificar que se guardó (cierra y reabre PowerShell primero)</span>
+<span class="psvar">$env</span>:GEMINI_API_KEY</pre>
+  </div>
+
+  <div class="alert info">
+    <div class="alert-icon">🪟</div>
+    <div>
+      <div class="alert-title">Alternativa: Variables de entorno por interfaz gráfica</div>
+      <p>Presiona <kbd>Win + R</kbd> → escribe <code>sysdm.cpl</code> → <strong>Opciones avanzadas</strong> → <strong>Variables de entorno</strong> → en "Variables de usuario" haz clic en <strong>Nueva</strong> → Nombre: <code>GEMINI_API_KEY</code>, Valor: tu key.</p>
+    </div>
+  </div>
+</div>
+
+<!-- FASE 9 -->
+<div class="phase" id="config">
+  <div class="phase-header">
+    <div class="phase-number">9</div>
+    <div>
+      <div class="phase-title">openclaw.json completo para Windows</div>
+      <div class="phase-subtitle">Configuración con paths de Windows y seguridad máxima</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-label">Abrir el archivo de configuración</div>
+    <pre><span class="pscmt"># Abrir con el Bloc de Notas</span>
+<span class="ps">notepad</span> <span class="psstr">"$env:USERPROFILE\.openclaw\openclaw.json"</span>
+
+<span class="pscmt"># O con VS Code si lo tienes instalado</span>
+<span class="ps">code</span> <span class="psstr">"$env:USERPROFILE\.openclaw\openclaw.json"</span></pre>
+  </div>
+
+  <div class="config-file">
+    <div class="config-file-header">
+      <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+      C:\Users\TuUsuario\.openclaw\openclaw.json
+    </div>
+    <pre>{
+  <span class="cmt2">// GATEWAY — Configuración del servidor local</span>
+  <span class="key">"gateway"</span>: {
+    <span class="key">"bind"</span>: <span class="str2">"loopback"</span>,
+    <span class="key">"port"</span>: <span class="num">5189</span>,
+    <span class="key">"auth"</span>: { <span class="key">"mode"</span>: <span class="str2">"token"</span> },
+    <span class="key">"mDNS"</span>: { <span class="key">"mode"</span>: <span class="str2">"minimal"</span> }
+  },
+
+  <span class="cmt2">// MENSAJES — Quién puede hablar con el agente</span>
+  <span class="key">"messages"</span>: {
+    <span class="key">"dmPolicy"</span>: <span class="str2">"pairing"</span>,
+    <span class="key">"groupPolicy"</span>: <span class="str2">"mention"</span>
+  },
+
+  <span class="cmt2">// TOOLS — Permisos de herramientas</span>
+  <span class="key">"tools"</span>: {
+    <span class="key">"allow"</span>: [<span class="str2">"read"</span>, <span class="str2">"write"</span>, <span class="str2">"edit"</span>, <span class="str2">"web_search"</span>, <span class="str2">"fetch"</span>],
+    <span class="key">"deny"</span>: [<span class="str2">"exec"</span>, <span class="str2">"browser"</span>, <span class="str2">"camera"</span>, <span class="str2">"screen"</span>],
+    <span class="key">"execApproval"</span>: <span class="bool">true</span>
+  },
+
+  <span class="cmt2">// AGENTES — Modelos y comportamiento</span>
+  <span class="key">"agents"</span>: {
+    <span class="key">"defaults"</span>: {
+      <span class="key">"model"</span>: {
+        <span class="key">"primary"</span>: <span class="str2">"ollama/qwen3:8b-q4_K_M"</span>,
+        <span class="key">"fallbacks"</span>: [
+          <span class="str2">"ollama/qwen2.5-coder:7b-q4_K_M"</span>,
+          <span class="str2">"google/gemini-2.0-flash"</span>
+        ]
+      },
+      <span class="key">"modelOptions"</span>: {
+        <span class="key">"temperature"</span>: <span class="num">0.1</span>,
+        <span class="key">"contextWindow"</span>: <span class="num">32768</span>
+      },
+      <span class="key">"maxConcurrent"</span>: <span class="num">2</span>,
+      <span class="cmt2">// IMPORTANTE: Path de Windows con barras invertidas dobles</span>
+      <span class="key">"workspace"</span>: <span class="str2">"C:\\Users\\TuUsuario\\.openclaw\\workspace"</span>,
+      <span class="key">"compaction"</span>: { <span class="key">"mode"</span>: <span class="str2">"safeguard"</span> }
+    }
+  },
+
+  <span class="cmt2">// MODELOS — Proveedores</span>
+  <span class="key">"models"</span>: {
+    <span class="key">"providers"</span>: {
+      <span class="key">"ollama"</span>: {
+        <span class="key">"baseUrl"</span>: <span class="str2">"http://127.0.0.1:11434"</span>,
+        <span class="key">"apiKey"</span>: <span class="str2">"ollama-local"</span>,
+        <span class="key">"models"</span>: [
+          { <span class="key">"id"</span>: <span class="str2">"qwen3:8b-q4_K_M"</span>, <span class="key">"name"</span>: <span class="str2">"Qwen3 8B"</span>, <span class="key">"reasoning"</span>: <span class="bool">true</span>, <span class="key">"contextWindow"</span>: <span class="num">32768</span>, <span class="key">"cost"</span>: { <span class="key">"input"</span>: <span class="num">0</span>, <span class="key">"output"</span>: <span class="num">0</span> } },
+          { <span class="key">"id"</span>: <span class="str2">"qwen2.5-coder:7b-q4_K_M"</span>, <span class="key">"name"</span>: <span class="str2">"Qwen Coder 7B"</span>, <span class="key">"reasoning"</span>: <span class="bool">false</span>, <span class="key">"contextWindow"</span>: <span class="num">32768</span>, <span class="key">"cost"</span>: { <span class="key">"input"</span>: <span class="num">0</span>, <span class="key">"output"</span>: <span class="num">0</span> } },
+          { <span class="key">"id"</span>: <span class="str2">"qwen2.5-coder:14b-q4_K_M"</span>, <span class="key">"name"</span>: <span class="str2">"Qwen Coder 14B"</span>, <span class="key">"reasoning"</span>: <span class="bool">false</span>, <span class="key">"contextWindow"</span>: <span class="num">32768</span>, <span class="key">"cost"</span>: { <span class="key">"input"</span>: <span class="num">0</span>, <span class="key">"output"</span>: <span class="num">0</span> } },
+          { <span class="key">"id"</span>: <span class="str2">"qwen3:4b-q4_K_M"</span>, <span class="key">"name"</span>: <span class="str2">"Qwen3 4B Rápido"</span>, <span class="key">"reasoning"</span>: <span class="bool">false</span>, <span class="key">"contextWindow"</span>: <span class="num">32768</span>, <span class="key">"cost"</span>: { <span class="key">"input"</span>: <span class="num">0</span>, <span class="key">"output"</span>: <span class="num">0</span> } }
+        ]
+      },
+      <span class="key">"google"</span>: {
+        <span class="key">"apiKey"</span>: <span class="str2">"${GEMINI_API_KEY}"</span>,
+        <span class="key">"models"</span>: [
+          { <span class="key">"id"</span>: <span class="str2">"gemini-2.0-flash"</span>, <span class="key">"name"</span>: <span class="str2">"Gemini 2.0 Flash (Gratis)"</span>, <span class="key">"contextWindow"</span>: <span class="num">1000000</span> }
+        ]
+      }
+    }
+  }
+}</pre>
+  </div>
+
+  <div class="alert warning">
+    <div class="alert-icon">⚠️</div>
+    <div>
+      <div class="alert-title">Reemplaza "TuUsuario" con tu nombre de usuario real</div>
+      <p>En el campo <code>"workspace"</code>, reemplaza <code>TuUsuario</code> con el nombre real de tu usuario de Windows. Puedes encontrarlo ejecutando <code>$env:USERNAME</code> en PowerShell.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <pre><span class="pscmt"># Aplicar la nueva configuración</span>
+<span class="ps">openclaw</span> gateway restart
+<span class="ps">openclaw</span> status</pre>
+  </div>
+</div>
+
+<!-- FASE 10 -->
+<div class="phase" id="security">
+  <div class="phase-header">
+    <div class="phase-number">10</div>
+    <div>
+      <div class="phase-title">Hardening de seguridad en Windows</div>
+      <div class="phase-subtitle">Permisos NTFS, Firewall, y alternativa a NemoClaw</div>
+    </div>
+  </div>
+
+  <h3>Permisos NTFS del directorio de configuración</h3>
+  <div class="step">
+    <div class="step-label">PowerShell 7 como Administrador</div>
+    <pre><span class="pscmt"># Restringir acceso al directorio .openclaw solo a tu usuario</span>
+<span class="psvar">$path</span> = <span class="psstr">"$env:USERPROFILE\.openclaw"</span>
+<span class="psvar">$acl</span> = <span class="ps">Get-Acl</span> <span class="psvar">$path</span>
+
+<span class="pscmt"># Remover herencia de permisos</span>
+<span class="psvar">$acl</span>.SetAccessRuleProtection(<span class="bool">$true</span>, <span class="bool">$false</span>)
+
+<span class="pscmt"># Dar acceso completo solo a tu usuario</span>
+<span class="psvar">$rule</span> = <span class="ps">New-Object</span> System.Security.AccessControl.FileSystemAccessRule(
+    <span class="psvar">$env</span>:USERNAME, <span class="psstr">"FullControl"</span>, <span class="psstr">"ContainerInherit,ObjectInherit"</span>, <span class="psstr">"None"</span>, <span class="psstr">"Allow"</span>
+)
+<span class="psvar">$acl</span>.AddAccessRule(<span class="psvar">$rule</span>)
+<span class="ps">Set-Acl</span> <span class="psvar">$path</span> <span class="psvar">$acl</span>
+
+<span class="pscmt"># Verificar permisos aplicados</span>
+<span class="ps">Get-Acl</span> <span class="psvar">$path</span> | <span class="ps">Format-List</span></pre>
+  </div>
+
+  <h3>Regla de Firewall de Windows para el gateway</h3>
+  <div class="step">
+    <div class="step-label">PowerShell 7 como Administrador</div>
+    <pre><span class="pscmt"># Bloquear acceso externo al puerto del gateway de OpenClaw</span>
+<span class="pscmt"># Solo permite conexiones desde localhost (127.0.0.1)</span>
+<span class="ps">New-NetFirewallRule</span> <span class="psflag">-DisplayName</span> <span class="psstr">"OpenClaw Gateway - Block External"</span> `
+    <span class="psflag">-Direction</span> Inbound `
+    <span class="psflag">-Protocol</span> TCP `
+    <span class="psflag">-LocalPort</span> 5189 `
+    <span class="psflag">-Action</span> Block `
+    <span class="psflag">-RemoteAddress</span> <span class="psstr">"0.0.0.0/0"</span>
+
+<span class="pscmt"># Permitir solo loopback</span>
+<span class="ps">New-NetFirewallRule</span> <span class="psflag">-DisplayName</span> <span class="psstr">"OpenClaw Gateway - Allow Loopback"</span> `
+    <span class="psflag">-Direction</span> Inbound `
+    <span class="psflag">-Protocol</span> TCP `
+    <span class="psflag">-LocalPort</span> 5189 `
+    <span class="psflag">-Action</span> Allow `
+    <span class="psflag">-RemoteAddress</span> <span class="psstr">"127.0.0.1"</span></pre>
+  </div>
+
+  <h3>Auditoría de seguridad</h3>
+  <div class="step">
+    <pre><span class="pscmt"># Ejecutar auditoría de seguridad de OpenClaw</span>
+<span class="ps">openclaw</span> security audit
+<span class="ps">openclaw</span> security audit <span class="psflag">--deep</span>
+<span class="ps">openclaw</span> security audit <span class="psflag">--fix</span>
+
+<span class="pscmt"># Deshabilitar mDNS broadcasting</span>
+<span class="ps">[System.Environment]</span>::SetEnvironmentVariable(<span class="psstr">"OPENCLAW_DISABLE_BONJOUR"</span>, <span class="psstr">"1"</span>, <span class="psstr">"User"</span>)</pre>
+  </div>
+</div>
+
+<!-- FASE 11 -->
+<div class="phase" id="skills">
+  <div class="phase-header">
+    <div class="phase-number">11</div>
+    <div>
+      <div class="phase-title">Instalar skills recomendadas</div>
+      <div class="phase-subtitle">Solo las seguras y útiles para uso personal</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <pre><span class="pscmt"># Instalar skills oficiales y auditadas</span>
+<span class="ps">openclaw</span> skills install web-search
+<span class="ps">openclaw</span> skills install memory
+<span class="ps">openclaw</span> skills install code-assistant
+<span class="ps">openclaw</span> skills install summarizer
+<span class="ps">openclaw</span> skills install cron
+
+<span class="pscmt"># Verificar skills instaladas</span>
+<span class="ps">openclaw</span> skills list</pre>
+  </div>
+</div>
+
+<!-- VERIFICACIÓN -->
+<div class="phase" id="verify">
+  <div class="phase-header">
+    <div class="phase-number">✓</div>
+    <div>
+      <div class="phase-title">Verificación final</div>
+      <div class="phase-subtitle">Confirmar que todo funciona en Windows</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <pre><span class="pscmt">═══ CHECKLIST DE VERIFICACIÓN COMPLETA ════</span>
+
+<span class="pscmt"># 1. PowerShell 7</span>
+<span class="psvar">$PSVersionTable</span>.PSVersion         <span class="pscmt"># Esperar: 7.x.x</span>
+
+<span class="pscmt"># 2. Node.js 24+</span>
+<span class="ps">node</span> <span class="psflag">--version</span>                   <span class="pscmt"># Esperar: v24.x.x</span>
+
+<span class="pscmt"># 3. Docker Desktop</span>
+<span class="ps">docker</span> <span class="psflag">--version</span>                 <span class="pscmt"># Esperar: 24+</span>
+
+<span class="pscmt"># 4. Ollama con GPU</span>
+<span class="ps">nvidia-smi</span>                       <span class="pscmt"># Ver RTX 4060</span>
+<span class="ps">ollama</span> list                      <span class="pscmt"># Ver los 4 modelos</span>
+
+<span class="pscmt"># 5. OpenClaw versión segura</span>
+<span class="ps">openclaw</span> <span class="psflag">--version</span>               <span class="pscmt"># Esperar: 2026.1.29+</span>
+<span class="ps">openclaw</span> status                  <span class="pscmt"># Esperar: Gateway running</span>
+
+<span class="pscmt"># 6. Gemini API key</span>
+<span class="psvar">$env</span>:GEMINI_API_KEY               <span class="pscmt"># No debe estar vacía</span>
+
+<span class="pscmt"># 7. Auditoría de seguridad</span>
+<span class="ps">openclaw</span> security audit          <span class="pscmt"># Sin issues críticos</span>
+
+<span class="pscmt"># 8. Test de modelo local</span>
+<span class="ps">openclaw</span> chat <span class="psflag">--model</span> <span class="psstr">"ollama/qwen3:8b-q4_K_M"</span> <span class="psstr">"Di hola"</span></pre>
+  </div>
+</div>
+
+<!-- TROUBLESHOOTING -->
+<div class="phase" id="trouble">
+  <div class="phase-header">
+    <div class="phase-number">⚠</div>
+    <div>
+      <div class="phase-title">Troubleshooting específico de Windows</div>
+    </div>
+  </div>
+
+  <table>
+    <tr><th>Problema</th><th>Solución Windows</th></tr>
+    <tr><td>npm: "no se puede cargar porque la ejecución de scripts está deshabilitada"</td><td><code>Set-ExecutionPolicy RemoteSigned -Scope CurrentUser</code></td></tr>
+    <tr><td>Ollama no encuentra la GPU</td><td>Actualizar drivers NVIDIA desde nvidia.com/drivers y reiniciar</td></tr>
+    <tr><td>openclaw no se reconoce como comando</td><td>Cierra y reabre PowerShell 7. Si persiste: <code>$env:PATH += ";$env:APPDATA\npm"</code></td></tr>
+    <tr><td>Variables de entorno no se cargan</td><td>Cierra y reabre PowerShell completamente después de setear variables con <code>[Environment]::SetEnvironmentVariable</code></td></tr>
+    <tr><td>Docker Desktop no inicia</td><td>Verificar virtualización habilitada en BIOS. Ejecutar <code>wsl --update</code> en PowerShell como Admin</td></tr>
+    <tr><td>Puerto 5189 en uso</td><td><code>netstat -aon | findstr "5189"</code> para ver qué proceso lo usa, y cambia el port en openclaw.json</td></tr>
+    <tr><td>Path con espacios da error en workspace</td><td>Usar comillas dobles y barras dobles: <code>"C:\\Users\\Mi Usuario\\.openclaw"</code></td></tr>
+  </table>
+</div>
+
+<hr>
+<div class="footer">
+  <p>🪟🦞 Guía Windows 11 Nativa · PowerShell 7 · OpenClaw 2026.1.29+</p>
+  <p style="margin-top: 8px;">RTX 4060 8GB VRAM · 32 GB RAM · Costo: <strong>$0/mes</strong></p>
+</div>
+
+</div>
+</body>
+</html>
